@@ -15,16 +15,8 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package guru.sfg.beer.order.service.web.mappers;
+package guru.sfg.beer.order.service.domain;
 
-import guru.sfg.beer.order.service.domain.BeerOrder;
-import guru.sfg.beer.order.service.web.model.BeerOrderDto;
-import org.mapstruct.Mapper;
-
-@Mapper(uses = {DateMapper.class, BeerOrderLineMapper.class})
-public interface BeerOrderMapper {
-
-    BeerOrderDto beerOrderToDto(BeerOrder beerOrder);
-
-    BeerOrder dtoToBeerOrder(BeerOrderDto dto);
+public enum  OrderStatusEnum {
+    NEW, READY, PICKED_UP
 }
