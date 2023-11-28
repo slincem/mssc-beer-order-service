@@ -24,6 +24,12 @@ import lombok.Setter;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.annotations.Type;
+import org.hibernate.type.StandardBasicTypes;
+import org.hibernate.type.descriptor.jdbc.VarcharJdbcType;
+import org.springframework.data.util.TypeUtils;
+
 import java.sql.Timestamp;
 import java.util.Set;
 import java.util.UUID;
@@ -48,7 +54,8 @@ public class Customer extends BaseEntity {
 
     private String customerName;
 
-    @Column(length = 36, columnDefinition = "varchar")
+    @JdbcType(VarcharJdbcType.class)
+    @Column(length = 36, columnDefinition = "varchar(36)")
     private UUID apiKey;
 
     @OneToMany(mappedBy = "customer")

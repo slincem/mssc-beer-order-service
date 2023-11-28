@@ -19,12 +19,11 @@ package guru.sfg.beer.order.service.domain;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.Type;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.*;
 
 import jakarta.persistence.*;
+import org.hibernate.type.descriptor.jdbc.VarcharJdbcType;
+
 import java.sql.Timestamp;
 import java.util.UUID;
 
@@ -51,7 +50,8 @@ public class BaseEntity {
             name = "UUID",
             strategy = "org.hibernate.id.UUIDGenerator"
     )
-    @Column(length = 36, columnDefinition = "varchar", updatable = false, nullable = false )
+    @JdbcType(VarcharJdbcType.class)
+    @Column(length = 36, columnDefinition = "varchar(36)", updatable = false, nullable = false )
     private UUID id;
 
     @Version
