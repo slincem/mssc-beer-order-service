@@ -1,9 +1,6 @@
 package guru.sfg.beer.order.service.config;
 
-import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.Queue;
-import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
@@ -13,21 +10,22 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    public static final String TOPIC_EXCHANGE_NAME = "beer-exchange";
-    public static final String QUEUE_NAME = "beer-orders";
+    public static final String VALIDATE_ORDER_EXCHANGE = "validate-order-exchange";
+    public static final String VALIDATE_ORDER_QUEUE = "validate-order-queue";
+    public static final String ROUTING_KEY = "validate-order";
 
     @Bean
-    Queue queue() {
-        return new Queue(QUEUE_NAME, false);
+    Queue validateOrderQueue() {
+        return new Queue(VALIDATE_ORDER_QUEUE, false);
     }
 
     @Bean
-    TopicExchange exchange() {
-        return new TopicExchange(TOPIC_EXCHANGE_NAME);
+    DirectExchange validateOrderExchange() {
+        return new DirectExchange(VALIDATE_ORDER_EXCHANGE);
     }
 
     @Bean
-    Binding binding(Queue queue, TopicExchange exchange) {
-        return BindingBuilder.bind(queue).to(exchange).with("beer.#");
+    Binding bindingValidateOrder(Queue validateOrderQueue, DirectExchange validateOrderExchange) {
+        return BindingBuilder.bind(validateOrderQueue).to(validateOrderExchange).with(ROUTING_KEY);
     }
 }

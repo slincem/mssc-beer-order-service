@@ -1,10 +1,12 @@
-package guru.sfg.beer.order.service.services.sm;
+package guru.sfg.beer.order.service.statemachine;
 
 import guru.sfg.beer.order.service.domain.BeerOrder;
 import guru.sfg.beer.order.service.domain.BeerOrderEventEnum;
 import guru.sfg.beer.order.service.domain.BeerOrderStatusEnum;
 import guru.sfg.beer.order.service.repositories.BeerOrderRepository;
+import guru.sfg.beer.order.service.services.BeerOrderManagerImpl;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.statemachine.state.State;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Component;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @RequiredArgsConstructor
 @Component
 public class BeerOrderStateChangeInterceptor extends StateMachineInterceptorAdapter<BeerOrderStatusEnum, BeerOrderEventEnum> {
@@ -28,6 +31,9 @@ public class BeerOrderStateChangeInterceptor extends StateMachineInterceptorAdap
                                StateMachine<BeerOrderStatusEnum, BeerOrderEventEnum> rootStateMachine) {
         Optional.ofNullable(message).flatMap(msg -> Optional.ofNullable((String) msg.getHeaders().getOrDefault(BeerOrderManagerImpl.BEER_ORDER_ID_HEADER,
                 -1L))).ifPresent(beerOrderId -> {
+
+            log.debug("Saving state for order id: " + beerOrderId + " Status: " + state.getId());
+
             BeerOrder beerOrder = beerOrderRepository.findOneById(UUID.fromString(beerOrderId));
             beerOrder.setOrderStatus(state.getId());
             beerOrderRepository.saveAndFlush(beerOrder);
