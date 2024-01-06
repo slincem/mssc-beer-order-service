@@ -17,8 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class BeerOrderManagerImpl implements BeerOrderManager {
 
+    public static final String BEER_ORDER_ID_HEADER = "BEER_ORDER_ID_HEADER";
     private final StateMachineFactory<BeerOrderStatusEnum, BeerOrderEventEnum> stateMachineFactory;
     private final BeerOrderRepository beerOrderRepository;
+    private final BeerOrderStateChangeInterceptor beerOrderStateChangeInterceptor;
 
     @Transactional
     @Override
@@ -36,11 +38,17 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
     private void sendBeerOrderEvent(BeerOrder beerOrder, BeerOrderEventEnum eventEnum) {
         StateMachine<BeerOrderStatusEnum, BeerOrderEventEnum> stateMachine = build(beerOrder);
 
-        Message msg = MessageBuilder.withPayload(eventEnum)
+        Message msg = MessageBuilder.withPayload(eventEnum).setHeader(BEER_ORDER_ID_HEADER, beerOrder.getId())
                 .build();
         stateMachine.sendEvent(msg);
     }
 
+    /**
+     * Builds or returns a StateMachine for a given BeerOrder.
+     *
+     * @param  beerOrder	the BeerOrder to build the StateMachine for
+     * @return         	the built StateMachine
+     */
     private StateMachine<BeerOrderStatusEnum, BeerOrderEventEnum> build(BeerOrder beerOrder) {
         // Take the state machine from the cache Spring has, or create a new one.
         StateMachine<BeerOrderStatusEnum, BeerOrderEventEnum> stateMachine = stateMachineFactory.getStateMachine(beerOrder.getId());
@@ -50,6 +58,9 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
 
         //We rehydrate the StateMachine with the state that comes from DB.
         stateMachine.getStateMachineAccessor().doWithAllRegions(sma -> {
+
+            //As part of the rehydration we set an interceptor to "intercept" changes over the state machine
+            sma.addStateMachineInterceptor(beerOrderStateChangeInterceptor);
             // Force the state machine to set this status.
             sma.resetStateMachine(new DefaultStateMachineContext<>(beerOrder.getOrderStatus(), null, null, null));
         });
