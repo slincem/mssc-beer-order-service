@@ -32,4 +32,10 @@ public class RabbitMQConfig {
     Binding bindingValidateOrder(Queue validateOrderQueue, DirectExchange validateOrderExchange) {
         return BindingBuilder.bind(validateOrderQueue).to(validateOrderExchange).with(ROUTING_KEY);
     }
+
+
+    @Bean
+    Queue validateOrderResultQueue() {
+        return new Queue(VALIDATE_ORDER_RESULT_QUEUE, false);
+    }
 }
