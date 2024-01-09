@@ -21,7 +21,7 @@ import java.util.UUID;
 @Slf4j
 @RequiredArgsConstructor
 @Component
-public class ValidateOrderAction implements Action<BeerOrderStatusEnum, BeerOrderEventEnum> {
+public class ValidateBeerOrderAction implements Action<BeerOrderStatusEnum, BeerOrderEventEnum> {
 
     private final RabbitTemplate rabbitTemplate;
     private final BeerOrderRepository beerOrderRepository;
@@ -35,7 +35,7 @@ public class ValidateOrderAction implements Action<BeerOrderStatusEnum, BeerOrde
 
         BeerOrderDto beerOrderDto = beerOrderMapper.beerOrderToDto(beerOrder);
         ValidateBeerOrderRequest validateBeerOrderRequest = ValidateBeerOrderRequest.builder().beerOrderDto(beerOrderDto).build();
-        rabbitTemplate.convertAndSend(RabbitMQConfig.VALIDATE_ORDER_EXCHANGE, RabbitMQConfig.ROUTING_KEY, validateBeerOrderRequest);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.BEER_ORDER_EXCHANGE, RabbitMQConfig.BEER_ORDER_VALIDATION_ROUTING_KEY, validateBeerOrderRequest);
 
         log.debug("Sent Validation request to queue for order id: " + beerOrderId);
     }

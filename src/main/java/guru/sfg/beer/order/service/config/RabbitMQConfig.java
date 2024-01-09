@@ -1,36 +1,45 @@
 package guru.sfg.beer.order.service.config;
 
-import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.DirectExchange;
-import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitMQConfig {
 
-    public static final String VALIDATE_ORDER_EXCHANGE = "validate-order-exchange";
-    public static final String VALIDATE_ORDER_QUEUE = "validate-order-queue";
-    public static final String ROUTING_KEY = "validate-order";
+    public static final String BEER_ORDER_EXCHANGE = "beer-order-exchange";
 
-    // Esta cola fue creada en Beer Service, por lo que aqui solo necesito saber su nombre.
     public static final String VALIDATE_ORDER_RESULT_QUEUE = "validate-order-result-queue";
+    public static final String VALIDATE_ORDER_QUEUE = "validate-order-queue";
+    public static final String ALLOCATE_ORDER_QUEUE = "allocate-order-queue";
 
+    //Routing Keys for Order Events
+    public static final String BEER_ORDER_VALIDATION_ROUTING_KEY = "beer-order.validate";
+    public static final String BEER_ORDER_ALLOCATION_ROUTING_KEY = "beer-order.allocate";
+
+
+    @Bean
+    TopicExchange beerOrderExchange() {
+        return new TopicExchange(BEER_ORDER_EXCHANGE);
+    }
 
     @Bean
     Queue validateOrderQueue() {
         return new Queue(VALIDATE_ORDER_QUEUE, false);
     }
-
     @Bean
-    DirectExchange validateOrderExchange() {
-        return new DirectExchange(VALIDATE_ORDER_EXCHANGE);
+    Binding bindingValidateOrder(Queue validateOrderQueue, TopicExchange beerOrderExchange) {
+        return BindingBuilder.bind(validateOrderQueue).to(beerOrderExchange).with(BEER_ORDER_VALIDATION_ROUTING_KEY);
     }
 
     @Bean
-    Binding bindingValidateOrder(Queue validateOrderQueue, DirectExchange validateOrderExchange) {
-        return BindingBuilder.bind(validateOrderQueue).to(validateOrderExchange).with(ROUTING_KEY);
+    Queue allocateOrderQueue() {
+        return new Queue(ALLOCATE_ORDER_QUEUE, false);
+    }
+
+    @Bean
+    Binding bindingAllocateOrder(Queue allocateOrderQueue, TopicExchange beerOrderExchange) {
+        return BindingBuilder.bind(allocateOrderQueue).to(beerOrderExchange).with(BEER_ORDER_ALLOCATION_ROUTING_KEY);
     }
 
 

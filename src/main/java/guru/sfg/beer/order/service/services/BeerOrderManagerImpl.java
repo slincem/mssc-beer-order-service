@@ -53,6 +53,11 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
 
         if(isValid) {
             sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.VALIDATION_PASSED);
+
+            // Look for the object again, because the beerOrder from before is now in a "stale state", because it's older.
+            // and there is a new version, because the event interceptor changed it.
+            BeerOrder validatedBeerOrder = beerOrderRepository.findOneById(beerOrderId);
+            sendBeerOrderEvent(validatedBeerOrder, BeerOrderEventEnum.ALLOCATE_ORDER);
         } else {
             sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.VALIDATION_FAILED);
         }
