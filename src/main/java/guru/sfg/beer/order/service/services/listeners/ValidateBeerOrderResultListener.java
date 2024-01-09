@@ -7,7 +7,6 @@ import guru.sfg.beer.order.service.services.BeerOrderManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +21,7 @@ public class ValidateBeerOrderResultListener {
 
 
     @Transactional
-    @RabbitListener(queues = RabbitMQConfig.VALIDATE_ORDER_RESULT_QUEUE)
+    @RabbitListener(queues = RabbitMQConfig.VALIDATE_BEER_ORDER_RESULT_QUEUE)
     public void listenBeerOrderValidationResult(ValidateOrderResult validateOrderResult) {
         final UUID beerOrderId = validateOrderResult.getBeerOrderId();
 

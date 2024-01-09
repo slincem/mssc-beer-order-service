@@ -9,9 +9,11 @@ public class RabbitMQConfig {
 
     public static final String BEER_ORDER_EXCHANGE = "beer-order-exchange";
 
-    public static final String VALIDATE_ORDER_RESULT_QUEUE = "validate-order-result-queue";
-    public static final String VALIDATE_ORDER_QUEUE = "validate-order-queue";
-    public static final String ALLOCATE_ORDER_QUEUE = "allocate-order-queue";
+    public static final String VALIDATE_BEER_ORDER_RESULT_QUEUE = "validate-beer-order-result-queue";
+    public static final String VALIDATE_BEER_ORDER_QUEUE = "validate-beer-order-queue";
+    public static final String ALLOCATE_BEER_ORDER_QUEUE = "allocate-beer-order-queue";
+    public static final String ALLOCATE_BEER_ORDER_RESULT_QUEUE = "allocate-beer-oder-result-queue";
+
 
     //Routing Keys for Order Events
     public static final String BEER_ORDER_VALIDATION_ROUTING_KEY = "beer-order.validate";
@@ -25,7 +27,7 @@ public class RabbitMQConfig {
 
     @Bean
     Queue validateOrderQueue() {
-        return new Queue(VALIDATE_ORDER_QUEUE, false);
+        return new Queue(VALIDATE_BEER_ORDER_QUEUE, false);
     }
     @Bean
     Binding bindingValidateOrder(Queue validateOrderQueue, TopicExchange beerOrderExchange) {
@@ -34,7 +36,7 @@ public class RabbitMQConfig {
 
     @Bean
     Queue allocateOrderQueue() {
-        return new Queue(ALLOCATE_ORDER_QUEUE, false);
+        return new Queue(ALLOCATE_BEER_ORDER_QUEUE, false);
     }
 
     @Bean
@@ -45,6 +47,10 @@ public class RabbitMQConfig {
 
     @Bean
     Queue validateOrderResultQueue() {
-        return new Queue(VALIDATE_ORDER_RESULT_QUEUE, false);
+        return new Queue(VALIDATE_BEER_ORDER_RESULT_QUEUE, false);
+    }
+    @Bean
+    Queue allocateOrderResultQueue() {
+        return new Queue(ALLOCATE_BEER_ORDER_RESULT_QUEUE, false);
     }
 }
