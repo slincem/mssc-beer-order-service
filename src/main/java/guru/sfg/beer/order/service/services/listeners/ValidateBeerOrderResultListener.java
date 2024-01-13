@@ -2,7 +2,7 @@ package guru.sfg.beer.order.service.services.listeners;
 
 
 import guru.sfg.beer.order.service.config.RabbitMQConfig;
-import guru.sfg.beer.order.service.events.ValidateOrderResult;
+import guru.sfg.beer.order.service.events.ValidateBeerOrderResult;
 import guru.sfg.beer.order.service.services.BeerOrderManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,11 +22,11 @@ public class ValidateBeerOrderResultListener {
 
     @Transactional
     @RabbitListener(queues = RabbitMQConfig.VALIDATE_BEER_ORDER_RESULT_QUEUE)
-    public void listenBeerOrderValidationResult(ValidateOrderResult validateOrderResult) {
-        final UUID beerOrderId = validateOrderResult.getBeerOrderId();
+    public void listenBeerOrderValidationResult(ValidateBeerOrderResult validateBeerOrderResult) {
+        final UUID beerOrderId = validateBeerOrderResult.getBeerOrderId();
 
         log.debug("Validation Result for Beer Order Id: " + beerOrderId + " received");
 
-        beerOrderManager.processValidationResult(beerOrderId, validateOrderResult.getIsValid());
+        beerOrderManager.processValidationResult(beerOrderId, validateBeerOrderResult.getIsValid());
     }
 }

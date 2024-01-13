@@ -19,7 +19,8 @@ import java.util.UUID;
 public class BeerServiceImpl implements BeerService {
 
     private RestTemplate restTemplate;
-    private final String BEER_SERVICE_PATH = "/api/v1/beer";
+    public final static String BEER_SERVICE_PATH = "/api/v1/beer";
+    public final static String BEER_SERVICE_UPC_PATH = BEER_SERVICE_PATH + "/upc/";
 
     private String beerServiceHost;
 
@@ -33,20 +34,12 @@ public class BeerServiceImpl implements BeerService {
 
     @Override
     public Optional<BeerDto> getBeerServiceInfo(UUID beerId) {
-        return Optional.of(restTemplate.getForObject(beerServiceHost + BEER_SERVICE_PATH + beerId.toString(), BeerDto.class));
+        return Optional.of(restTemplate.getForObject(beerServiceHost + BEER_SERVICE_PATH + "/" + beerId.toString(), BeerDto.class));
     }
 
     @Override
     public Optional<BeerDto> getBeerServiceInfo(String upc) {
         log.debug("Calling Beer Service: {}", upc);
-
-        final String FIND_BY_UPC = "/upc/{beerUpc}";
-        ResponseEntity<BeerDto> beerFound = restTemplate.exchange(
-                beerServiceHost + BEER_SERVICE_PATH + FIND_BY_UPC,
-                HttpMethod.GET,
-                null,
-                new ParameterizedTypeReference<BeerDto>() {},
-                upc);
-        return Optional.of(beerFound.getBody());
+        return Optional.of(restTemplate.getForObject(beerServiceHost + BEER_SERVICE_UPC_PATH + upc, BeerDto.class));
     }
 }

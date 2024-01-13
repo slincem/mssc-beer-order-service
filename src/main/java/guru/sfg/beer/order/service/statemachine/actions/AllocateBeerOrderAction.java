@@ -16,6 +16,7 @@ import org.springframework.statemachine.action.Action;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
 import java.util.UUID;
 
 @Slf4j
@@ -31,17 +32,16 @@ public class AllocateBeerOrderAction implements Action<BeerOrderStatusEnum, Beer
     @Override
     public void execute(StateContext<BeerOrderStatusEnum, BeerOrderEventEnum> stateContext) {
 
-        String beerOrderId = stateContext.getMessage().getHeaders().get(BeerOrderManagerImpl.BEER_ORDER_ID_HEADER,
-                String.class);
-        BeerOrder beerOrder = beerOrderRepository.findOneById(UUID.fromString(beerOrderId));
+        String beerOrderId = Objects.requireNonNull(stateContext.getMessage().getHeaders().get(BeerOrderManagerImpl.BEER_ORDER_ID_HEADER, UUID.class)).toString();
+        beerOrderRepository.findById(UUID.fromString(beerOrderId)).ifPresentOrElse(beerOrder -> {
+            AllocateBeerOrderRequest allocationRequest = AllocateBeerOrderRequest.builder()
+                    .beerOrderDto(beerOrderMapper.beerOrderToDto(beerOrder))
+                    .build();
 
-        AllocateBeerOrderRequest allocationRequest = AllocateBeerOrderRequest.builder()
-                .beerOrderDto(beerOrderMapper.beerOrderToDto(beerOrder))
-                .build();
+            rabbitTemplate.convertAndSend(RabbitMQConfig.BEER_ORDER_ALLOCATION_ROUTING_KEY,
+                    RabbitMQConfig.BEER_ORDER_EXCHANGE, allocationRequest);
 
-        rabbitTemplate.convertAndSend(RabbitMQConfig.BEER_ORDER_ALLOCATION_ROUTING_KEY,
-                RabbitMQConfig.BEER_ORDER_EXCHANGE, allocationRequest);
-
-        log.debug("Sent Allocation request to queue for order id: " + beerOrderId);
+            log.debug("Sent Allocation request to queue for order id: " + beerOrderId);
+        }, () -> log.error("AllocateBeerOrderAction. Beer Order Not Found. ID: " + beerOrderId));
     }
 }

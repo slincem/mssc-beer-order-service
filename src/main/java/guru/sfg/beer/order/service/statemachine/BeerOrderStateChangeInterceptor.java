@@ -13,6 +13,7 @@ import org.springframework.statemachine.state.State;
 import org.springframework.statemachine.support.StateMachineInterceptorAdapter;
 import org.springframework.statemachine.transition.Transition;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -24,19 +25,21 @@ public class BeerOrderStateChangeInterceptor extends StateMachineInterceptorAdap
 
     private final BeerOrderRepository beerOrderRepository;
 
+    @Transactional
     @Override
     public void preStateChange(State<BeerOrderStatusEnum, BeerOrderEventEnum> state, Message<BeerOrderEventEnum> message,
                                Transition<BeerOrderStatusEnum, BeerOrderEventEnum> transition,
                                StateMachine<BeerOrderStatusEnum, BeerOrderEventEnum> stateMachine,
                                StateMachine<BeerOrderStatusEnum, BeerOrderEventEnum> rootStateMachine) {
-        Optional.ofNullable(message).flatMap(msg -> Optional.ofNullable((String) msg.getHeaders().getOrDefault(BeerOrderManagerImpl.BEER_ORDER_ID_HEADER,
-                -1L))).ifPresent(beerOrderId -> {
+        Optional.ofNullable(message).flatMap(msg -> Optional.ofNullable(String.valueOf(msg.getHeaders().getOrDefault(BeerOrderManagerImpl.BEER_ORDER_ID_HEADER,
+                -1L)))).ifPresent(beerOrderId -> {
 
             log.debug("Saving state for order id: " + beerOrderId + " Status: " + state.getId());
 
-            BeerOrder beerOrder = beerOrderRepository.findOneById(UUID.fromString(beerOrderId));
-            beerOrder.setOrderStatus(state.getId());
-            beerOrderRepository.saveAndFlush(beerOrder);
+            beerOrderRepository.findById(UUID.fromString(beerOrderId)).ifPresentOrElse(beerOrder -> {
+                beerOrder.setOrderStatus(state.getId());
+                beerOrderRepository.saveAndFlush(beerOrder);
+            }, () -> log.error("Pre State Change: Beer Order Not Found. ID: " + beerOrderId));
         });
     }
 
