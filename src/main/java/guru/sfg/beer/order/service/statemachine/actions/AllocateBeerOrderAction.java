@@ -32,14 +32,16 @@ public class AllocateBeerOrderAction implements Action<BeerOrderStatusEnum, Beer
     @Override
     public void execute(StateContext<BeerOrderStatusEnum, BeerOrderEventEnum> stateContext) {
 
-        String beerOrderId = Objects.requireNonNull(stateContext.getMessage().getHeaders().get(BeerOrderManagerImpl.BEER_ORDER_ID_HEADER, UUID.class)).toString();
+        String beerOrderId = Objects.requireNonNull(stateContext.getMessage().getHeaders()
+                .get(BeerOrderManagerImpl.BEER_ORDER_ID_HEADER, UUID.class)).toString();
         beerOrderRepository.findById(UUID.fromString(beerOrderId)).ifPresentOrElse(beerOrder -> {
             AllocateBeerOrderRequest allocationRequest = AllocateBeerOrderRequest.builder()
                     .beerOrderDto(beerOrderMapper.beerOrderToDto(beerOrder))
                     .build();
 
-            rabbitTemplate.convertAndSend(RabbitMQConfig.BEER_ORDER_ALLOCATION_ROUTING_KEY,
-                    RabbitMQConfig.BEER_ORDER_EXCHANGE, allocationRequest);
+            rabbitTemplate.convertAndSend(RabbitMQConfig.BEER_ORDER_EXCHANGE,
+                    RabbitMQConfig.BEER_ORDER_ALLOCATION_ROUTING_KEY,
+                    allocationRequest);
 
             log.debug("Sent Allocation request to queue for order id: " + beerOrderId);
         }, () -> log.error("AllocateBeerOrderAction. Beer Order Not Found. ID: " + beerOrderId));

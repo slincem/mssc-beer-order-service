@@ -20,6 +20,7 @@ public class RabbitMQConfig {
     //Routing Keys for Order Events
     public static final String BEER_ORDER_VALIDATION_ROUTING_KEY = "beer-order.validate";
     public static final String BEER_ORDER_ALLOCATION_ROUTING_KEY = "beer-order.allocate";
+    public static final String BEER_ORDER_ALLOCATION_RESULT_ROUTING_KEY = "beer-order.allocate.result";
 
 
     public static final String VALIDATE_BEER_ORDER_RESULT_EXCHANGE = "validate-beer-order-result-exchange";
@@ -73,9 +74,15 @@ public class RabbitMQConfig {
 
 
 
+
     @Bean
     Queue allocateOrderResultQueue() {
         return new Queue(ALLOCATE_BEER_ORDER_RESULT_QUEUE, false);
+    }
+
+    @Bean
+    Binding binding(Queue allocateOrderResultQueue, TopicExchange beerOrderExchange) {
+        return BindingBuilder.bind(allocateOrderResultQueue).to(beerOrderExchange).with(BEER_ORDER_ALLOCATION_RESULT_ROUTING_KEY);
     }
 
 
