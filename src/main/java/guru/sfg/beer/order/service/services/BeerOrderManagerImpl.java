@@ -77,6 +77,8 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
         beerOrderRepository.findById(beerOrderDto.getId()).ifPresentOrElse((beerOrder) -> {
             sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.ALLOCATION_NO_INVENTORY);
             updateAllocatedQuantity(beerOrderDto);
+            BeerOrder beerOrderUpdated = beerOrderRepository.findById(beerOrderDto.getId()).get();
+            sendBeerOrderEvent(beerOrderUpdated, BeerOrderEventEnum.BEERORDER_PICK_UP);
         }, () -> log.error("BeerOrderAllocationPendingInventory. BeerBeer Order Not Found. ID: " + beerOrderDto.getId()));
 
     }
@@ -94,8 +96,6 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
             //TODO this differs from the original sample. This should be the correct way.
             beerOrderRepository.saveAndFlush(allocatedOrder);
         }), () -> log.error("UpdateAllocatedQuantity.Beer Order Not Found. ID: " + beerOrderDto.getId()));
-
-
     }
 
     @Transactional
@@ -104,6 +104,13 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
         beerOrderRepository.findById(beerOrderDto.getId()).ifPresentOrElse((beerOrder) -> {
             sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.ALLOCATION_FAILED);
         }, () -> log.error("BeerOrderAllocationFailed. Beer Order Not Found. ID: " + beerOrderDto.getId()));
+    }
+
+    @Override
+    public void beerOrderPickedUp(UUID beerOrderId) {
+        beerOrderRepository.findById(beerOrderId).ifPresentOrElse((beerOrder) -> {
+            sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.BEERORDER_PICK_UP);
+        }, () -> log.error("BeerOrderPickedUp. Beer Order Not Found. ID: " + beerOrderId));
     }
 
     private void sendBeerOrderEvent(BeerOrder beerOrder, BeerOrderEventEnum eventEnum) {

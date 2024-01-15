@@ -33,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @SpringBootTest
 public class BeerOrderManagerImplIT {
 
+    public static final String CUSTOMER_REF_FAIL_VALIDATION = "fail-validation";
     @Autowired
     BeerOrderManager beerOrderManager;
 
@@ -76,7 +77,8 @@ public class BeerOrderManagerImplIT {
 
         BeerDto beerDto = BeerDto.builder().id(beerId).upc("12345").build();
 
-        wireMockServer.stubFor(WireMock.get(BeerServiceImpl.BEER_SERVICE_UPC_PATH + "12345").willReturn(WireMock.okJson(objectMapper.writeValueAsString(beerDto))));
+        wireMockServer.stubFor(WireMock.get(BeerServiceImpl.BEER_SERVICE_UPC_PATH + "12345")
+                .willReturn(WireMock.okJson(objectMapper.writeValueAsString(beerDto))));
         BeerOrder beerOrder = createBeerOrder();
 
         BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
@@ -88,11 +90,60 @@ public class BeerOrderManagerImplIT {
             assertEquals(BeerOrderStatusEnum.ALLOCATED, foundOrder.getOrderStatus());
         });
 
-        savedBeerOrder = beerOrderRepository.findById(savedBeerOrder.getId()).get();
+        BeerOrder savedBeerOrder2 = beerOrderRepository.findById(savedBeerOrder.getId()).get();
 
-        assertNotNull(savedBeerOrder);
-        assertEquals(BeerOrderStatusEnum.ALLOCATED, savedBeerOrder.getOrderStatus());
-        savedBeerOrder.getBeerOrderLines().forEach(line -> assertEquals(line.getOrderQuantity(), line.getQuantityAllocated()));
+        assertNotNull(savedBeerOrder2);
+        assertEquals(BeerOrderStatusEnum.ALLOCATED, savedBeerOrder2.getOrderStatus());
+        savedBeerOrder2.getBeerOrderLines().forEach(line -> assertEquals(line.getOrderQuantity(), line.getQuantityAllocated()));
+    }
+
+    @Test
+     void testFailedValidation() throws JsonProcessingException {
+         BeerDto beerDto = BeerDto.builder().id(beerId).upc("12345").build();
+
+         wireMockServer.stubFor(WireMock.get(BeerServiceImpl.BEER_SERVICE_UPC_PATH + "12345")
+                 .willReturn(WireMock.okJson(objectMapper.writeValueAsString(beerDto))));
+         BeerOrder beerOrder = createBeerOrder();
+         beerOrder.setCustomerRef(CUSTOMER_REF_FAIL_VALIDATION);
+
+         BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
+
+         // We need to wait to the spring state machine to process the event.
+         await().untilAsserted(() -> {
+             BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+
+             assertEquals(BeerOrderStatusEnum.VALIDATION_EXCEPTION, foundOrder.getOrderStatus());
+         });
+     }
+
+    @Test
+    void testNewToPickedUp() throws JsonProcessingException {
+        BeerDto beerDto = BeerDto.builder().id(beerId).upc("12345").build();
+
+        wireMockServer.stubFor(WireMock.get(BeerServiceImpl.BEER_SERVICE_UPC_PATH + "12345")
+                .willReturn(WireMock.okJson(objectMapper.writeValueAsString(beerDto))));
+        BeerOrder beerOrder = createBeerOrder();
+
+        BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
+
+        // We need to wait to the spring state machine to process the event.
+        await().untilAsserted(() -> {
+            BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+            assertEquals(BeerOrderStatusEnum.ALLOCATED, foundOrder.getOrderStatus());
+        });
+
+        beerOrderManager.beerOrderPickedUp(savedBeerOrder.getId());
+
+        await().untilAsserted(() -> {
+            BeerOrder foundOrder = beerOrderRepository.findById(savedBeerOrder.getId()).get();
+            assertEquals(BeerOrderStatusEnum.PICKED_UP, foundOrder.getOrderStatus());
+        });
+
+        BeerOrder pickedUpOrder = beerOrderRepository.findById(savedBeerOrder.getId()).get();
+
+        // Could think this is being duplicated, but there are more complex escenarios where we rewrite the state.
+        // so it's better to double check
+        assertEquals(BeerOrderStatusEnum.PICKED_UP, pickedUpOrder.getOrderStatus());
     }
 
     public BeerOrder createBeerOrder() {
