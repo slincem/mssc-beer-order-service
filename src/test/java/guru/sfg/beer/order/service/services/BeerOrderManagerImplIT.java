@@ -34,6 +34,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 public class BeerOrderManagerImplIT {
 
     public static final String CUSTOMER_REF_FAIL_VALIDATION = "fail-validation";
+    public static final String CUSTOMER_REF_FAIL_ALLOCATION = "fail-allocation";
+    public static final String CUSTOMER_REF_PARTIAL_ALLOCATION = "partial-allocation";
+
+
     @Autowired
     BeerOrderManager beerOrderManager;
 
@@ -115,6 +119,44 @@ public class BeerOrderManagerImplIT {
              assertEquals(BeerOrderStatusEnum.VALIDATION_EXCEPTION, foundOrder.getOrderStatus());
          });
      }
+
+    @Test
+    void testFailedAllocation() throws JsonProcessingException {
+        BeerDto beerDto = BeerDto.builder().id(beerId).upc("12345").build();
+
+        wireMockServer.stubFor(WireMock.get(BeerServiceImpl.BEER_SERVICE_UPC_PATH + "12345")
+                .willReturn(WireMock.okJson(objectMapper.writeValueAsString(beerDto))));
+        BeerOrder beerOrder = createBeerOrder();
+        beerOrder.setCustomerRef(CUSTOMER_REF_FAIL_ALLOCATION);
+
+        BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
+
+        // We need to wait to the spring state machine to process the event.
+        await().untilAsserted(() -> {
+            BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+
+            assertEquals(BeerOrderStatusEnum.ALLOCATION_EXCEPTION, foundOrder.getOrderStatus());
+        });
+    }
+
+    @Test
+    void testPartialAllocation() throws JsonProcessingException {
+        BeerDto beerDto = BeerDto.builder().id(beerId).upc("12345").build();
+
+        wireMockServer.stubFor(WireMock.get(BeerServiceImpl.BEER_SERVICE_UPC_PATH + "12345")
+                .willReturn(WireMock.okJson(objectMapper.writeValueAsString(beerDto))));
+        BeerOrder beerOrder = createBeerOrder();
+        beerOrder.setCustomerRef(CUSTOMER_REF_PARTIAL_ALLOCATION);
+
+        BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
+
+        // We need to wait to the spring state machine to process the event.
+        await().untilAsserted(() -> {
+            BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+
+            assertEquals(BeerOrderStatusEnum.PENDING_INVENTORY, foundOrder.getOrderStatus());
+        });
+    }
 
     @Test
     void testNewToPickedUp() throws JsonProcessingException {
