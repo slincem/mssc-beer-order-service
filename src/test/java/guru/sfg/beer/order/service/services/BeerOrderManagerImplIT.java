@@ -11,6 +11,7 @@ import guru.sfg.beer.order.service.domain.BeerOrderLine;
 import guru.sfg.beer.order.service.domain.BeerOrderStatusEnum;
 import guru.sfg.beer.order.service.domain.Customer;
 import guru.sfg.beer.order.service.events.AllocateBeerOrderFailureEvent;
+import guru.sfg.beer.order.service.events.DeallocateBeerOrderRequest;
 import guru.sfg.beer.order.service.repositories.BeerOrderRepository;
 import guru.sfg.beer.order.service.repositories.CustomerRepository;
 import guru.sfg.beer.order.service.services.beer.BeerServiceImpl;
@@ -40,6 +41,8 @@ public class BeerOrderManagerImplIT {
     public static final String CUSTOMER_REF_FAIL_VALIDATION = "fail-validation";
     public static final String CUSTOMER_REF_FAIL_ALLOCATION = "fail-allocation";
     public static final String CUSTOMER_REF_PARTIAL_ALLOCATION = "partial-allocation";
+    public static final String CUSTOMER_REF_VALIDATION_PENDING_TO_CANCEL = "validation-pending-to-cancel";
+    public static final String CUSTOMER_REF_ALLOCATION_PENDING_TO_CANCEL = "allocation-pending-to-cancel";
 
 
     @Autowired
@@ -200,6 +203,103 @@ public class BeerOrderManagerImplIT {
         // Could think this is being duplicated, but there are more complex escenarios where we rewrite the state.
         // so it's better to double check
         assertEquals(BeerOrderStatusEnum.PICKED_UP, pickedUpOrder.getOrderStatus());
+    }
+
+    @Test
+    void testValidationPendingToCancelled() throws JsonProcessingException {
+        BeerDto beerDto = BeerDto.builder().id(beerId).upc("12345").build();
+
+        wireMockServer.stubFor(WireMock.get(BeerServiceImpl.BEER_SERVICE_UPC_PATH + "12345")
+                .willReturn(WireMock.okJson(objectMapper.writeValueAsString(beerDto))));
+        BeerOrder beerOrder = createBeerOrder();
+        beerOrder.setCustomerRef(CUSTOMER_REF_VALIDATION_PENDING_TO_CANCEL);
+
+        BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
+
+        // We need to wait to the spring state machine to process the event.
+        await().untilAsserted(() -> {
+            BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+            assertEquals(BeerOrderStatusEnum.VALIDATION_PENDING, foundOrder.getOrderStatus());
+        });
+
+        beerOrderManager.beerOrderCancelled(savedBeerOrder.getId());
+
+        await().untilAsserted(() -> {
+            BeerOrder foundOrder = beerOrderRepository.findById(savedBeerOrder.getId()).get();
+            assertEquals(BeerOrderStatusEnum.CANCELLED, foundOrder.getOrderStatus());
+        });
+
+        BeerOrder canceledOrder = beerOrderRepository.findById(savedBeerOrder.getId()).get();
+
+        // Could think this is being duplicated, but there are more complex escenarios where we rewrite the state.
+        // so it's better to double check
+        assertEquals(BeerOrderStatusEnum.CANCELLED, canceledOrder.getOrderStatus());
+    }
+
+    @Test
+    void testAllocationPendingToCancelled() throws JsonProcessingException {
+        BeerDto beerDto = BeerDto.builder().id(beerId).upc("12345").build();
+
+        wireMockServer.stubFor(WireMock.get(BeerServiceImpl.BEER_SERVICE_UPC_PATH + "12345")
+                .willReturn(WireMock.okJson(objectMapper.writeValueAsString(beerDto))));
+        BeerOrder beerOrder = createBeerOrder();
+        beerOrder.setCustomerRef(CUSTOMER_REF_ALLOCATION_PENDING_TO_CANCEL);
+
+        BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
+
+        // We need to wait to the spring state machine to process the event.
+        await().untilAsserted(() -> {
+            BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+            assertEquals(BeerOrderStatusEnum.ALLOCATION_PENDING, foundOrder.getOrderStatus());
+        });
+
+        beerOrderManager.beerOrderCancelled(savedBeerOrder.getId());
+
+        await().untilAsserted(() -> {
+            BeerOrder foundOrder = beerOrderRepository.findById(savedBeerOrder.getId()).get();
+            assertEquals(BeerOrderStatusEnum.CANCELLED, foundOrder.getOrderStatus());
+        });
+
+        BeerOrder canceledOrder = beerOrderRepository.findById(savedBeerOrder.getId()).get();
+
+        // Could think this is being duplicated, but there are more complex escenarios where we rewrite the state.
+        // so it's better to double check
+        assertEquals(BeerOrderStatusEnum.CANCELLED, canceledOrder.getOrderStatus());
+    }
+
+    @Test
+    void testAllocatedToCancelled() throws JsonProcessingException {
+        BeerDto beerDto = BeerDto.builder().id(beerId).upc("12345").build();
+
+        wireMockServer.stubFor(WireMock.get(BeerServiceImpl.BEER_SERVICE_UPC_PATH + "12345")
+                .willReturn(WireMock.okJson(objectMapper.writeValueAsString(beerDto))));
+        BeerOrder beerOrder = createBeerOrder();
+
+        BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
+
+        // We need to wait to the spring state machine to process the event.
+        await().untilAsserted(() -> {
+            BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
+            assertEquals(BeerOrderStatusEnum.ALLOCATED, foundOrder.getOrderStatus());
+        });
+
+        beerOrderManager.beerOrderCancelled(savedBeerOrder.getId());
+
+        await().untilAsserted(() -> {
+            BeerOrder foundOrder = beerOrderRepository.findById(savedBeerOrder.getId()).get();
+            assertEquals(BeerOrderStatusEnum.CANCELLED, foundOrder.getOrderStatus());
+        });
+
+        BeerOrder canceledOrder = beerOrderRepository.findById(savedBeerOrder.getId()).get();
+
+        DeallocateBeerOrderRequest deallocationEvent = (DeallocateBeerOrderRequest) rabbitTemplate
+                .receiveAndConvert(RabbitMQConfig.DEALLOCATE_BEER_ORDER_QUEUE);
+
+        // Could think this is being duplicated, but there are more complex escenarios where we rewrite the state.
+        // so it's better to double check
+        assertEquals(BeerOrderStatusEnum.CANCELLED, canceledOrder.getOrderStatus());
+        assertNotNull(deallocationEvent);
+        Assertions.assertThat(deallocationEvent.getBeerOrderDto().getId()).isEqualTo(canceledOrder.getId());
     }
 
     public BeerOrder createBeerOrder() {

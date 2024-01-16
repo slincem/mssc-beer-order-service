@@ -39,6 +39,8 @@ public class BeerOrderAllocationListener {
                 .build();
 
         log.debug("AllocationTest Result: " + allocateBeerOrderResult);
-        rabbitTemplate.convertAndSend(RabbitMQConfig.BEER_ORDER_EXCHANGE, RabbitMQConfig.BEER_ORDER_ALLOCATION_RESULT_ROUTING_KEY, allocateBeerOrderResult);
+        if(!BeerOrderManagerImplIT.CUSTOMER_REF_ALLOCATION_PENDING_TO_CANCEL.equals(beerOrderDto.getCustomerRef())) {
+            rabbitTemplate.convertAndSend(RabbitMQConfig.BEER_ORDER_EXCHANGE, RabbitMQConfig.BEER_ORDER_ALLOCATION_RESULT_ROUTING_KEY, allocateBeerOrderResult);
+        }
     }
 }

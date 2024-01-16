@@ -29,6 +29,8 @@ public class BeerOrderValidationListener {
         }
 
         ValidateBeerOrderResult message = ValidateBeerOrderResult.builder().beerOrderId(beerOrderDto.getId()).isValid(isValid).build();
-        rabbitTemplate.convertAndSend(RabbitMQConfig.VALIDATE_BEER_ORDER_RESULT_EXCHANGE, RabbitMQConfig.VALIDATE_BEER_ORDER_RESULT_ROUTING_KEY, message);
+        if(!BeerOrderManagerImplIT.CUSTOMER_REF_VALIDATION_PENDING_TO_CANCEL.equals(beerOrderDto.getCustomerRef())) {
+            rabbitTemplate.convertAndSend(RabbitMQConfig.VALIDATE_BEER_ORDER_RESULT_EXCHANGE, RabbitMQConfig.VALIDATE_BEER_ORDER_RESULT_ROUTING_KEY, message);
+        }
     }
 }

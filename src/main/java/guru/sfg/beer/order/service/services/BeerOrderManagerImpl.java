@@ -6,6 +6,7 @@ import guru.sfg.beer.order.service.domain.BeerOrderStatusEnum;
 import guru.sfg.beer.order.service.repositories.BeerOrderRepository;
 import guru.sfg.beer.order.service.statemachine.BeerOrderStateChangeInterceptor;
 import guru.sfg.beer.order.service.web.model.BeerOrderDto;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
@@ -28,6 +29,7 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
     private final StateMachineFactory<BeerOrderStatusEnum, BeerOrderEventEnum> stateMachineFactory;
     private final BeerOrderRepository beerOrderRepository;
     private final BeerOrderStateChangeInterceptor beerOrderStateChangeInterceptor;
+    private final EntityManager entityManager;
 
     @Transactional
     @Override
@@ -45,7 +47,9 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
     @Transactional
     @Override
     public void processValidationResult(UUID beerOrderId, Boolean isValid) {
+        log.debug("Process Validation Result for BeerOrderId: " + beerOrderId + " with result isValid?: " + isValid);
 
+        entityManager.flush();
        beerOrderRepository.findById(beerOrderId).ifPresentOrElse(beerOrder -> {
             if(isValid) {
                 sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.VALIDATION_PASSED);
@@ -58,8 +62,6 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
                 sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.VALIDATION_FAILED);
             }
         }, () -> log.error("ProcessValidationResult. Beer Order Not Found. ID: " + beerOrderId));
-
-
     }
 
     @Transactional
@@ -111,6 +113,13 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
         beerOrderRepository.findById(beerOrderId).ifPresentOrElse((beerOrder) -> {
             sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.BEERORDER_PICK_UP);
         }, () -> log.error("BeerOrderPickedUp. Beer Order Not Found. ID: " + beerOrderId));
+    }
+
+    @Override
+    public void beerOrderCancelled(UUID beerOrderId) {
+        beerOrderRepository.findById(beerOrderId).ifPresentOrElse((beerOrder) -> {
+            sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.CANCEL_ORDER);
+        }, () -> log.error("BeerOrderCancelled. Beer Order Not Found. ID: " + beerOrderId));
     }
 
     private void sendBeerOrderEvent(BeerOrder beerOrder, BeerOrderEventEnum eventEnum) {
