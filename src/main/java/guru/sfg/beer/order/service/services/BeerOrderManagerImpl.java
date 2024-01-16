@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -29,7 +31,6 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
     private final StateMachineFactory<BeerOrderStatusEnum, BeerOrderEventEnum> stateMachineFactory;
     private final BeerOrderRepository beerOrderRepository;
     private final BeerOrderStateChangeInterceptor beerOrderStateChangeInterceptor;
-    private final EntityManager entityManager;
 
     @Transactional
     @Override
@@ -49,11 +50,12 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
     public void processValidationResult(UUID beerOrderId, Boolean isValid) {
         log.debug("Process Validation Result for BeerOrderId: " + beerOrderId + " with result isValid?: " + isValid);
 
-        entityManager.flush();
-       beerOrderRepository.findById(beerOrderId).ifPresentOrElse(beerOrder -> {
+        beerOrderRepository.findById(beerOrderId).ifPresentOrElse(beerOrder -> {
             if(isValid) {
                 sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.VALIDATION_PASSED);
 
+                //Await for status to change.
+                awaitForStatus(beerOrderId, BeerOrderStatusEnum.VALIDATED);
                 // Look for the object again, because the beerOrder from before is now in a "stale state", because it's older.
                 // and there is a new version, because the event interceptor changed it.
                 BeerOrder validatedBeerOrder = beerOrderRepository.findById(beerOrderId).get();
@@ -69,6 +71,7 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
     public void beerOrderAllocationPassed(BeerOrderDto beerOrderDto) {
         beerOrderRepository.findById(beerOrderDto.getId()).ifPresentOrElse((beerOrder -> {
             sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.ALLOCATION_SUCCESS);
+            awaitForStatus(beerOrder.getId(), BeerOrderStatusEnum.ALLOCATED);
             updateAllocatedQuantity(beerOrderDto);
         }), () -> log.error("BeerOrderAllocationPassed. Beer Order Not Found. ID: " + beerOrderDto.getId()));
     }
@@ -78,6 +81,7 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
     public void beerOrderAllocationPendingInventory(BeerOrderDto beerOrderDto) {
         beerOrderRepository.findById(beerOrderDto.getId()).ifPresentOrElse((beerOrder) -> {
             sendBeerOrderEvent(beerOrder, BeerOrderEventEnum.ALLOCATION_NO_INVENTORY);
+            awaitForStatus(beerOrder.getId(), BeerOrderStatusEnum.PENDING_INVENTORY);
             updateAllocatedQuantity(beerOrderDto);
             BeerOrder beerOrderUpdated = beerOrderRepository.findById(beerOrderDto.getId()).get();
             sendBeerOrderEvent(beerOrderUpdated, BeerOrderEventEnum.BEERORDER_PICK_UP);
@@ -154,5 +158,42 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
 
         stateMachine.startReactively().subscribe();
         return stateMachine;
+    }
+
+    /**
+     * Waits for the spring state machine to change its status, trying to get the last status that was sent.
+     * in order to avoid race conditions to continue with the next step of the state machine.
+     * @param beerOrderId
+     * @param statusEnum
+     */
+    private void awaitForStatus(UUID beerOrderId, BeerOrderStatusEnum statusEnum) {
+
+        AtomicBoolean found = new AtomicBoolean(false);
+        AtomicInteger loopCount = new AtomicInteger(0);
+
+        while(!found.get()) {
+            if(loopCount.incrementAndGet() > 10) {
+                found.set(true);
+                log.debug("Loop Retries Exceeded");
+            }
+
+            beerOrderRepository.findById(beerOrderId).ifPresentOrElse(beerOrder -> {
+                if(beerOrder.getOrderStatus().equals(statusEnum)) {
+                    found.set(true);
+                    log.debug("Order Found");
+                } else {
+                    log.debug("Order Status Not Equal. Expected: " + statusEnum.name() + " Found: " + beerOrder.getOrderStatus().name());
+                }
+            }, () -> log.debug("Order Id Not Found in Await For Status."));
+
+            if(!found.get()) {
+                try {
+                    log.debug("awaitForStatus. Sleeping for retry");
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    //do nothing
+                }
+            }
+        }
     }
 }
