@@ -15,12 +15,14 @@ public class RabbitMQConfig {
     public static final String VALIDATE_BEER_ORDER_QUEUE = "validate-beer-order-queue";
     public static final String ALLOCATE_BEER_ORDER_QUEUE = "allocate-beer-order-queue";
     public static final String ALLOCATE_BEER_ORDER_RESULT_QUEUE = "allocate-beer-order-result-queue";
+    public static final String ALLOCATE_BEER_ORDER_FAILURE_QUEUE = "allocate-beer-order-failure-queue";
 
 
     //Routing Keys for Order Events
     public static final String BEER_ORDER_VALIDATION_ROUTING_KEY = "beer-order.validate";
     public static final String BEER_ORDER_ALLOCATION_ROUTING_KEY = "beer-order.allocate";
     public static final String BEER_ORDER_ALLOCATION_RESULT_ROUTING_KEY = "beer-order.allocate.result";
+    public static final String BEER_ORDER_ALLOCATION_FAILURE_ROUTING_KEY = "beer-order.allocate.failure";
 
 
     public static final String VALIDATE_BEER_ORDER_RESULT_EXCHANGE = "validate-beer-order-result-exchange";
@@ -74,16 +76,27 @@ public class RabbitMQConfig {
 
 
 
-
     @Bean
     Queue allocateOrderResultQueue() {
         return new Queue(ALLOCATE_BEER_ORDER_RESULT_QUEUE, false);
     }
 
     @Bean
-    Binding binding(Queue allocateOrderResultQueue, TopicExchange beerOrderExchange) {
+    Binding bindingAllocateOrderResult(Queue allocateOrderResultQueue, TopicExchange beerOrderExchange) {
         return BindingBuilder.bind(allocateOrderResultQueue).to(beerOrderExchange).with(BEER_ORDER_ALLOCATION_RESULT_ROUTING_KEY);
     }
+
+
+    @Bean
+    Queue allocateOrderFailureQueue() {
+        return new Queue(ALLOCATE_BEER_ORDER_FAILURE_QUEUE, false);
+    }
+
+    @Bean
+    Binding bindingAllocateOrderFailure(Queue allocateOrderFailureQueue, TopicExchange beerOrderExchange) {
+        return BindingBuilder.bind(allocateOrderFailureQueue).to(beerOrderExchange).with(BEER_ORDER_ALLOCATION_FAILURE_ROUTING_KEY);
+    }
+
 
 
 

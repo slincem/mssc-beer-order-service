@@ -5,17 +5,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import guru.sfg.beer.order.service.config.RabbitMQConfig;
 import guru.sfg.beer.order.service.domain.BeerOrder;
 import guru.sfg.beer.order.service.domain.BeerOrderLine;
 import guru.sfg.beer.order.service.domain.BeerOrderStatusEnum;
 import guru.sfg.beer.order.service.domain.Customer;
+import guru.sfg.beer.order.service.events.AllocateBeerOrderFailureEvent;
 import guru.sfg.beer.order.service.repositories.BeerOrderRepository;
 import guru.sfg.beer.order.service.repositories.CustomerRepository;
 import guru.sfg.beer.order.service.services.beer.BeerServiceImpl;
 import guru.sfg.beer.order.service.services.beer.model.BeerDto;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -52,6 +56,9 @@ public class BeerOrderManagerImplIT {
 
     @Autowired
     WireMockServer wireMockServer;
+
+    @Autowired
+    RabbitTemplate rabbitTemplate;
 
     Customer testCustomer;
 
@@ -98,7 +105,8 @@ public class BeerOrderManagerImplIT {
 
         assertNotNull(savedBeerOrder2);
         assertEquals(BeerOrderStatusEnum.ALLOCATED, savedBeerOrder2.getOrderStatus());
-        savedBeerOrder2.getBeerOrderLines().forEach(line -> assertEquals(line.getOrderQuantity(), line.getQuantityAllocated()));
+        savedBeerOrder2.getBeerOrderLines().forEach(line -> assertEquals(line.getOrderQuantity(),
+                line.getQuantityAllocated()));
     }
 
     @Test
@@ -137,6 +145,12 @@ public class BeerOrderManagerImplIT {
 
             assertEquals(BeerOrderStatusEnum.ALLOCATION_EXCEPTION, foundOrder.getOrderStatus());
         });
+
+        AllocateBeerOrderFailureEvent allocationFailureEvent = (AllocateBeerOrderFailureEvent) rabbitTemplate
+                .receiveAndConvert(RabbitMQConfig.ALLOCATE_BEER_ORDER_FAILURE_QUEUE);
+
+        assertNotNull(allocationFailureEvent);
+        Assertions.assertThat(allocationFailureEvent.getBeerOrderId()).isEqualTo(savedBeerOrder.getId());
     }
 
     @Test

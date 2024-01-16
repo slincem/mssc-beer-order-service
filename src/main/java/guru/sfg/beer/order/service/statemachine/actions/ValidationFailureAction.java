@@ -13,7 +13,6 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Slf4j
-@RequiredArgsConstructor
 @Component
 public class ValidationFailureAction implements Action<BeerOrderStatusEnum, BeerOrderEventEnum> {
 
