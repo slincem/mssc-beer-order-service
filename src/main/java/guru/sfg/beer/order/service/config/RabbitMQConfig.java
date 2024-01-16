@@ -16,6 +16,7 @@ public class RabbitMQConfig {
     public static final String ALLOCATE_BEER_ORDER_QUEUE = "allocate-beer-order-queue";
     public static final String ALLOCATE_BEER_ORDER_RESULT_QUEUE = "allocate-beer-order-result-queue";
     public static final String ALLOCATE_BEER_ORDER_FAILURE_QUEUE = "allocate-beer-order-failure-queue";
+    public static final String DEALLOCATE_BEER_ORDER_QUEUE = "deallocate-beer-order-queue";
 
 
     //Routing Keys for Order Events
@@ -23,6 +24,7 @@ public class RabbitMQConfig {
     public static final String BEER_ORDER_ALLOCATION_ROUTING_KEY = "beer-order.allocate";
     public static final String BEER_ORDER_ALLOCATION_RESULT_ROUTING_KEY = "beer-order.allocate.result";
     public static final String BEER_ORDER_ALLOCATION_FAILURE_ROUTING_KEY = "beer-order.allocate.failure";
+    public static final String BEER_ORDER_DEALLOCATION_ROUTING_KEY = "beer-order.deallocate";
 
 
     public static final String VALIDATE_BEER_ORDER_RESULT_EXCHANGE = "validate-beer-order-result-exchange";
@@ -97,6 +99,16 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(allocateOrderFailureQueue).to(beerOrderExchange).with(BEER_ORDER_ALLOCATION_FAILURE_ROUTING_KEY);
     }
 
+
+    @Bean
+    Queue deallocateOrderQueue() {
+        return new Queue(DEALLOCATE_BEER_ORDER_QUEUE, false);
+    }
+
+    @Bean
+    Binding bindingDeallocateOrder(Queue deallocateOrderQueue, TopicExchange beerOrderExchange) {
+        return BindingBuilder.bind(deallocateOrderQueue).to(beerOrderExchange).with(BEER_ORDER_DEALLOCATION_ROUTING_KEY);
+    }
 
 
 
