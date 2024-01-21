@@ -27,6 +27,7 @@ import org.springframework.data.jpa.repository.Lock;
 
 import jakarta.persistence.LockModeType;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 
@@ -41,4 +42,7 @@ public interface BeerOrderRepository  extends JpaRepository<BeerOrder, UUID> {
 
     /*@Lock(LockModeType.PESSIMISTIC_WRITE)
     BeerOrder findOneById(UUID id);*/
+
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    public Optional<BeerOrder> findById(UUID beerOrderId);
 }
