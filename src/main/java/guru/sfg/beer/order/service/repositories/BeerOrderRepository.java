@@ -43,6 +43,6 @@ public interface BeerOrderRepository  extends JpaRepository<BeerOrder, UUID> {
     /*@Lock(LockModeType.PESSIMISTIC_WRITE)
     BeerOrder findOneById(UUID id);*/
 
-    @Lock(LockModeType.PESSIMISTIC_READ)
-    public Optional<BeerOrder> findById(UUID beerOrderId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<BeerOrder> findById(UUID beerOrderId);
 }
